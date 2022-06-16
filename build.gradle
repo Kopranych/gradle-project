@@ -1,17 +1,44 @@
-plugins {
-    id 'java' //добавили плагин java для сборки java приложения
+plugins { // additional build functionality
+    id 'java' //main a core 
+    id 'application' // run java project easily
+}
+
+application {
+    mainClassName = 'com.kopranych.GradleProject'
 }
 
 jar {
-    manifest {
-        attributes 'Main-Class': 'com.kopranych.GradleProject'
-    }
+//    manifest {
+//        attributes 'Main-Class': 'com.kopranych.GradleProject'
+//    }
 }
 
-repositories {
+repositories { // where to find dependencies
     mavenCentral() //call maven central
 }
 
-dependencies {
-    testImplementation group: 'junit', name: 'junit', version: '4.13.2'
+dependencies ({ //requirements for building project
+    testImplementation "org.junit.jupiter:junit-jupiter:5.6.3"
+})
+
+tasks.register('newTask') { //register custom tasks
+    doLast {
+        println 'Hello gradle ' + project?.name
+    }
+    doFirst {
+        System.out.println("Java in Groovy")
+    }
 }
+
+test {
+    useJUnitPlatform()
+}
+
+task printDependencies {// задачу, которая распечатает зависимости всех задач
+    doLast {
+        tasks.all { Task task ->
+            println "${task.name} dependsOn ${task.dependsOn}"
+        }
+    }
+}
+
