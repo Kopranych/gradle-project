@@ -1,3 +1,6 @@
+import com.kopranych.ProjectVersion
+import com.kopranych.ReleaseVersionTask
+
 buildscript {
     gradle.projectsEvaluated {
         tasks.withType(JavaCompile){
@@ -12,6 +15,9 @@ plugins { // additional build functionality
     id "org.barfuin.gradle.taskinfo" version "1.4.0"
     id "com.github.ben-manes.versions" version "0.42.0"
 }
+
+setDescription("My first gradle project")
+println "Description of project $name: " + project.description
 
 application {
     mainClassName = 'com.kopranych.GradleProject'
@@ -52,3 +58,117 @@ task printDependencies {// задачу, которая распечатает �
     }
 }
 
+//version = '0.1-SNAPSHOT'
+//task printVersion {
+//    doFirst {
+//        println "Before reading the project version"
+//    }
+//    doLast {
+//        println "Version: $version"
+//    }
+//}
+//printVersion.doFirst { println "First action" }
+//printVersion.doLast { println "Last action" }
+//def inputs = printVersion.getInputs()
+//
+//task printVersion1 {
+//    group = 'versioning'
+//    description = 'Prints project version.'
+//    doLast {
+//        logger.quiet "Version: $version"
+//    }
+//}
+//
+////declare gradlew properties
+//project.ext.myProp = 'myValue'
+//ext {
+//    someOtherProp = 123
+//    newProp = 'version'
+//}
+//assert myProp == 'myValue'
+//println "inputs: $inputs"
+//println project.newProp
+//ext.someOtherProp = 567
+
+
+//class ReleaseVersionTask extends DefaultTask {
+//    @Input Boolean release
+//    @OutputFile File destFile
+//    ReleaseVersionTask() {
+//        group = 'versioning'
+//        description = 'Makes project a release version.'
+//    }
+//    @TaskAction
+//    void start() {
+//        project.version.release = true
+//        ant.propertyfile(file: destFile) {
+//            entry(key: 'release', type: 'string', operation: '=', value: 'true')
+//        }
+//    }
+//}
+//
+//class ProjectVersion {
+//    Integer min
+//    Integer maj
+//    Boolean prodReady
+//    @Override
+//    String toString() {
+//        "$maj.$min${prodReady? '' : '-SNAPSHOT'}"
+//    }
+//}
+//
+//task makeReleaseVersion(type: ReleaseVersionTask) {
+//    release = version
+//    destFile = versionFile
+//}
+
+ext.versionFile = file('version.properties')
+
+task loadVersion {
+    project.version = readVersion()
+}
+
+ProjectVersion readVersion() {
+    logger.quiet 'Reading the version filess.'
+
+    if (!versionFile.exists()) {
+        throw new GradleException("Required version file does not exit: $versionFile.canonicalPath")
+    }
+
+    Properties versionProps = new Properties()
+
+    versionFile.withInputStream { stream ->
+        versionProps.load(stream)
+    }
+
+    new ProjectVersion(versionProps.major.toInteger(), versionProps.minor.toInteger(), versionProps.release.toBoolean())
+}
+
+task makeReleaseVersion(type: ReleaseVersionTask) {
+    release = version.release
+    destFile = versionFile
+}
+
+tasks.addRule("Pattern: increment<Classifier>Version – Increments the project version classifier.") {
+    String taskName ->
+        if (taskName.startsWith('increment') && taskName.endsWith('Version')) {
+            task(taskName) { 
+                doLast {
+                    String classifier = (taskName - 'increment' - 'Version').toLowerCase()
+                    String currentVersion = version.toString()
+                    switch (classifier) {
+                        case 'major': ++version.major
+                            break
+                        case 'minor': ++version.minor
+                            break
+                        default: throw new GradleException("Invalid version type '$classifier. Allowed types: ['Major', 'Minor']")
+                    }
+                    String newVersion = version.toString()
+                    logger.info "Incrementing $classifier project version:$currentVersion -> $newVersion"
+                    ant.propertyfile(file: versionFile) {
+                        entry(key: classifier, type: 'int', operation: '+', value: 1)
+                    }
+                }
+            }
+        }
+}
